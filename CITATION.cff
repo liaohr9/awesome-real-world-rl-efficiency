@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If this evidence atlas is useful, please cite the repository and the original papers supporting any reused result."
+title: "Awesome Real-World RL Efficiency: An Evidence Atlas of Sample and Time Cost"
+type: dataset
+authors:
+  - family-names: "Contributors"
+    given-names: "Awesome Real-World RL Efficiency"
+version: 1.0.0
+date-released: 2026-08-01
+license: MIT
+repository-code: "https://github.com/liaohr9/awesome-real-world-rl-efficiency"
+url: "https://github.com/liaohr9/awesome-real-world-rl-efficiency"
+keywords:
+  - reinforcement learning
+  - robotics
+  - sample efficiency
+  - wall-clock
+  - lifecycle accounting
+abstract: >-
+  An evidence-checked corpus through 2026-07-31 covering 34 physical-robot
+  core studies, two measurement/context papers, 25 mechanisms, 424
+  quantitative evidence rows (408 standard plus 16 supplemental, 162
+  not reported), 88 atomic time rows, and 25 bounded synthesis claims.

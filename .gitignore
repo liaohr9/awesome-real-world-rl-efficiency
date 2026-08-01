@@ -1,0 +1,18 @@
+# LaTeX build products
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.out
+paper/*.pdf
+paper/*.synctex.gz
+paper/*.toc
+
+# Python/editor temporary files
+__pycache__/
+*.py[cod]
+.DS_Store
+*.swp
+*~

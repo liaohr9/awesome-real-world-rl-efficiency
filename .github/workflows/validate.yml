@@ -1,0 +1,38 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-and-paper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Validate evidence repository
+        run: make validate
+
+      - name: Install minimal TeX toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y latexmk texlive-latex-base texlive-latex-recommended texlive-latex-extra
+
+      - name: Compile standalone survey
+        run: |
+          make paper
+          test -s paper/main.pdf
+
+      - name: Confirm clean source tree
+        run: |
+          make clean
+          make validate

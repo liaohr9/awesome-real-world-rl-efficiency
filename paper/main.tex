@@ -1,0 +1,488 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,longtable,tabularx,array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\NR}{\textsc{nr}}
+\setlist[itemize,enumerate]{nosep,leftmargin=*}
+\setlength{\emergencystretch}{3em}
+
+\title{Beyond Sample Count: An Evidence Atlas of Resource and Time Cost in Real-World Robot Reinforcement Learning}
+\author{Awesome Real-World RL Efficiency Contributors}
+\date{Evidence-checked corpus through 31 July 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Real-world robot reinforcement learning (RL) is often described by one headline quantity: samples, trials, minutes, or robot-hours. These quantities are not interchangeable. Physical transitions omit action duration, resets, operator occupancy, and compute waits; wall-clock can be compressed by fleets without reducing aggregate interaction; offline learning, world models, and rapid adaptation can reduce target-task interaction while inheriting physical data, accelerators, controllers, or simulation. We construct an evidence atlas of 36 verified works through 31 July 2026: 34 physical-robot core studies and two measurement/context papers. The atlas organizes 25 concrete mechanisms under six resource transformations, retains 424 work--metric rows (408 standard plus 16 supplemental, including 162 not-reported rows) and 25 bounded synthesis claims, and separates target-task marginal cost from lifecycle cost. The central result is methodological: \textbf{the bottleneck cannot be evaluated by its common headline proxy; an auditable resource/event model reveals both genuine reductions and displaced costs.} The corpus supports task-specific minute- and hour-scale achievements, but not a universal algorithm ranking, pooled effect size, or independently replicated E4 cost claim. We provide a comparison protocol covering physical interaction, elapsed and aggregate time, human labor, prior assets, compute, reset/recovery, safety, maintenance, and failed runs.
+\end{abstract}
+
+\section{Introduction}
+
+Deploying RL on physical robots changes the meaning of \emph{sample efficiency}. A transition can expose actuators, consume operator attention, cause wear, or require a reset. The same number of transitions may take minutes on one control loop and hours on another. A wall-clock result may come from one continuously operating robot or a fleet that accumulates many robot-hours in parallel. A policy deployed after offline training may require no new exploration while inheriting a large physical corpus. Real-world RL benchmarks have long identified delays, safety, non-stationarity, and system constraints as first-class problems \cite{dulacarnold2019challenges,dulacarnold2021challenges}, but paper-level reporting still favors isolated headline proxies.
+
+This survey asks a bounded question: what do verified physical-robot studies establish about resources required to reach a stated task target, and by which mechanisms are those resources reduced or relocated? We treat the answer as an evidence map rather than a leaderboard. The unit of analysis is a resource vector, and the unit of synthesis is a mechanism with an explicit trade-off.
+
+Our contributions are:
+\begin{enumerate}
+    \item an operational accounting boundary separating target-task marginal resources from full lifecycle resources;
+    \item a three-level taxonomy containing six resource transformations and 25 implementable mechanisms;
+    \item an auditable corpus of 36 works linked to a 424-row quantitative ledger and 25-claim synthesis ledger;
+    \item a missingness and comparability audit that explains why the corpus does not support a pooled rank;
+    \item a prospective evaluation protocol and falsifiable research agenda.
+\end{enumerate}
+
+The corpus contains important positive evidence. Several engineered manipulation, locomotion, and driving systems report learning within minutes or hours \cite{yang2020dataefficientlegged,wurss2023locality,stachowicz2023fastrlap,luo2024serl,zhan2022ferm,lancaster2024modemv2,liu2026autoserl}. The bounded interpretation is that a target online phase reaches a source-specific criterion under its own reset, demonstration, hardware, and upstream assets. It is not evidence that the complete system was created from zero within the same interval.
+
+\section{Problem Formulation and Accounting Boundary}
+
+\subsection{A resource vector}
+
+Let a study declare a physical task, initial-state distribution, frozen success evaluator, target threshold $\tau$, and evaluation rule. The cost of reaching $\tau$ is not a scalar but a vector
+\begin{align}
+\mathbf{C} = (&N_{\mathrm{transition}},N_{\mathrm{episode}},N_{\mathrm{trial}},
+H_{\mathrm{robot}}^{\mathrm{agg}},T_{\mathrm{wall}},T_{\mathrm{reset}},
+T_{\mathrm{recovery}},T_{\mathrm{human}}^{\mathrm{active}},
+T_{\mathrm{human}}^{\mathrm{standby}}, \nonumber\\
+&D_{\mathrm{demo}},D_{\mathrm{prior}},G_{\mathrm{compute}},
+N_{\mathrm{robot}}(t),H_{\mathrm{engineering}},
+E_{\mathrm{safety}},W_{\mathrm{wear}}).
+\end{align}
+The coordinates are overlapping diagnostic views: aggregate active robot-hours below already contain reset and recovery action time, which are also exposed separately for diagnosis. They may be summed only after an inclusion matrix removes overlap. Without explicit prices or constraints, the resulting vector must not be compressed into a universal score. A small laboratory, a fleet operator, and a safety-critical deployment assign different values to wall-clock, hardware, labor, energy, and risk.
+
+Aggregate active robot time is
+\begin{equation}
+H_{\mathrm{robot}}^{\mathrm{agg}}=
+\frac{1}{3600}\sum_{r=1}^{N}\left(
+T_{r,\mathrm{task}}+T_{r,\mathrm{reset}}+T_{r,\mathrm{recovery}}
+\right).
+\end{equation}
+Elapsed wall-clock instead spans a declared start and endpoint, including blocking updates, reset, rescue, maintenance, evaluation, and idle time. The two can only be interpreted together when actor count, concurrency, and duty cycle are known.
+
+\subsection{Marginal and lifecycle ledgers}
+
+We distinguish two legitimate views:
+\begin{description}
+    \item[Target-task marginal ledger.] Resources newly consumed for a target task after datasets, models, controllers, simulators, fixtures, and reward infrastructure exist.
+    \item[Lifecycle ledger.] Marginal resources plus an explicit allocation of upstream physical data, simulation, compute, engineering, hardware, evaluation, maintenance, and failed runs.
+\end{description}
+
+The distinction is essential for offline RL \cite{nair2020awac,singh2021cog,kumar2023ptr,chebotar2023qtransformer,zhou2023realorl,walke2023ariel}, world-model learning \cite{wu2023daydreamer,lancaster2024modemv2,sharma2026worldgymnast,yin2026playworld}, and adaptation \cite{cully2015adaptanimals,nagabandi2019metarl,hu2025robottrainsrobot}. Each can yield a real target-stage reduction, but the inherited resource is part of the lifecycle explanation.
+
+For an asset reused across $K$ deployments,
+\begin{equation}
+C_{\mathrm{amortized}}(K)=\frac{C_{\mathrm{fixed\ upstream}}}{K}
+{}+C_{\mathrm{per\ deployment}}.
+\end{equation}
+A break-even result is meaningful only if $K$, asset lifetime, and the allocation rule are declared.
+
+\subsection{Events, not just totals}
+
+Totals cannot reveal why operation stops. We model a physical run as timestamped events:
+\begin{equation}
+\mathcal{E}=\{e_i=(t_i^{s},t_i^{e},\mathrm{type},\mathrm{trigger},
+\mathrm{entry},\mathrm{outcome},\mathrm{fallback},h_i,s_i,w_i)\}.
+\end{equation}
+Event types distinguish task execution, failure detection, safety abort, backup control, local recovery, task-level recovery, exact reset, functional reset, pseudo-reset, human rescue, maintenance, replenishment, calibration, and resume. A safety abort is not a reset. A recovery attempt requires a frozen target set and tolerance.
+
+\section{Review Protocol}
+
+\subsection{Scope and eligibility}
+
+The cutoff is 31 July 2026. Core inclusion required original technical research, accessible full text, at least one physical-robot task experiment, central RL or an RL-enabling mechanism, and a direct measurement or intervention involving interaction, time, compute, reset, human input, reward engineering, prior data, safety, or wear. Context records could define the problem but could not support physical effectiveness.
+
+Simulation-only studies, component-only perception/planning/language studies, unverifiable physical claims, secondary records, duplicates, post-cutoff work, and component metrics not linked to task performance were excluded from the core set.
+
+\subsection{Search and screening}
+
+Search combined robot/embodiment terms, RL terms, and physical-hardware terms. A supplemental block used sample efficiency, robot-hours, wall-clock, few trials, rapid adaptation, and world models. The cost block was not mandatory because papers may report resource quantities without advertising efficiency.
+
+Public discovery and verification routes included arXiv, PMLR, OpenReview, official proceedings and publisher pages, DOI metadata, official project/repository pages, and citation chaining. Search snippets established candidacy only. Every promoted number required an original-source page, table, figure, section, or appendix locator.
+
+The inventory contains 73 canonical candidates: 34 included core works, two context works, five terminal full-text exclusions, 31 pending full-text candidates, and one pending title/abstract candidate. Pending items are not evidence. Screening was model-assisted with a root consistency pass, not independent dual screening.
+
+\subsection{Extraction and evidence controls}
+
+For each core work we extracted robot/task identity, physical training mode, success definition/result/denominator, reported phase duration, separately qualified time to a declared target, transitions, episodes, control frequency, robot-hours, wall-clock, hardware roles, compute, demonstrations, reset, reward engineering, prior assets, safety/wear, claimed reduction, displaced cost, source grade, locator, and limitations.
+
+Three labels remain orthogonal:
+\begin{itemize}
+    \item R0--R4: physical-robot evidence/deployment intensity;
+    \item E0--E4: strength of the sample/time-cost claim;
+    \item source grade: authority/status of the verified original.
+\end{itemize}
+The 34 core works comprise six R4, 23 R3, and five R2 records; their efficiency tiers comprise 13 E3, 14 E2, and seven E1 records. No E4 independent cross-team cost replication was verified. Official public code was located for 15 of 34 core works, but code availability is not physical reproduction.
+
+\subsection{Evidence chain}
+
+Ten machine-readable layers constrain the survey:
+\begin{enumerate}
+    \item a 36-row canonical paper table;
+    \item a 25-row mechanism matrix;
+    \item a 424-row quantitative ledger;
+    \item an 88-row atomic time ontology;
+    \item a 272-row lifecycle grid and a 36-row hardware-role ledger;
+    \item a 36-row tier-rationale ledger and a 19-row explicit-zero basis ledger;
+    \item a 25-row bounded claims ledger linked by 509 typed evidence mappings.
+\end{enumerate}
+Every core work has 12 standardized metric rows, giving 408 standard rows; 16 supplemental rows preserve high-value quantities such as human labor, reset success, maintenance cadence, and prior-data composition. Missing values remain \NR. Reviewer arithmetic is marked derived; approximate source wording remains approximate.
+
+The public data and this standalone article are released at \url{https://github.com/liaohr9/awesome-real-world-rl-efficiency}.
+
+\section{Taxonomy}
+
+The taxonomy organizes methods by resource transformation, not nominal algorithm family. Table~\ref{tab:taxonomy} summarizes the three levels. A work can inhabit several Level-3 mechanisms because system-level efficiency often arises from replay, demonstrations, reward, reset, compute, and fixtures together.
+
+\begin{table*}[t]
+\centering
+\small
+\caption{Three-level mechanism taxonomy. IDs are stable joins to the public mechanism matrix.}
+\label{tab:taxonomy}
+\begin{tabularx}{\textwidth}{p{0.20\textwidth}p{0.24\textwidth}Y}
+\toprule
+Level 1: resource transformation & Level 2: intervention locus & Level 3 mechanisms \\
+\midrule
+Reduce marginal online interaction &
+Direct update; model; representation; constrained policy; decomposition; trial-limited search &
+M01 replay/actor--critic reuse; M02 black-box dynamics/policy search; M03 online latent world model; M04 contrastive representation/imagined goal; M05 residual policy; M06 auxiliary intentions; M07 few-episode search \\
+\addlinespace
+Compress elapsed time &
+Parallel actors; external automation; fast online systems &
+M08 homogeneous fleet; M09 teacher/helper robot; M10 overlapped collection and local-accelerator learning \\
+\addlinespace
+Remove reset/recovery downtime &
+Task reciprocity; goal cycling; learned recovery; scripted fixture &
+M11 forward/backward self-reset; M12 pseudo-reset cycles; M13 learned reset/recovery; M14 reels, reorientation, gravity, launchers, or actuated bins \\
+\addlinespace
+Shift learning out of target online phase &
+Offline physical data; simulation/controller prior; learned world &
+M15 offline pretraining plus limited online tuning; M16 large-scale offline policy learning; M17 simulation/repertoire transfer; M18 policy improvement in a learned video world \\
+\addlinespace
+Improve exploration information &
+Demonstration; live supervision; autonomous diversification; reward/progress supervision &
+M19 initial demonstrations; M20 interventions/corrections; M21 play/failure/multi-task data; M22 learned success or reward classifiers \\
+\addlinespace
+Adapt instead of relearn &
+Dynamics; damage/behavior; policy adaptation &
+M23 meta-dynamics; M24 repertoire-guided Bayesian adaptation; M25 teacher-mediated policy adaptation \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\section{Evidence Synthesis by Mechanism}
+
+\subsection{Reducing marginal online interaction}
+
+\paragraph{Replay and direct online systems.}
+Replay-based actor--critic systems reuse physical transitions and can overlap collection with local accelerator updates. SERL and HIL-SERL combine fast learners with demonstrations, reward infrastructure, and reset/intervention mechanisms \cite{luo2024serl,luo2025hilserl}. Learning to Walk, SAC-X, and Walk in the Park show different locomotion and sparse-reward routes \cite{haarnoja2019walk,riedmiller2018sacx,wurss2023locality}. Their system results should not be attributed to an update rule alone: learner latency, reset cadence, action loop, supervision, and task engineering form the operational mechanism.
+
+\paragraph{Model and representation.}
+Low-dimensional black-box dynamics/policy search can reduce physical trials when the system is learnable from sparse data \cite{yang2020dataefficientlegged,chatzilygeroudis2017blackdrops}. Latent world models reuse observations through imagined rollouts \cite{wu2023daydreamer,lancaster2024modemv2}. Contrastive representations and imagined goals can reduce visual sample burden \cite{zhan2022ferm,nair2018rig}. Failure modes include contact discontinuities, model exploitation, latent shortcuts, and reward/goal mismatch.
+
+\paragraph{Constrained search and decomposition.}
+Residual RL reduces the policy search to corrections around an engineered controller \cite{johannink2019residual}. Auxiliary intentions densify learning signals for a sparse main task \cite{riedmiller2018sacx}. Few-episode policy search can be physically economical \cite{tebbe2021tabletennis,chatzilygeroudis2017blackdrops}; however, low trial count is not low elapsed cost when computation, trial duration, and reset time are unreported.
+
+\subsection{Compressing elapsed time}
+
+\paragraph{Fleets.}
+QT-Opt and MT-Opt use multi-robot collections, while Q-Transformer learns from a large physical corpus \cite{kalashnikov2018qtopt,kalashnikov2022mtopt,chebotar2023qtransformer}. Parallelism can reduce calendar delay, but it does not remove aggregate interactions, hardware, maintenance, staffing, or object logistics. Calendar speedup is
+\begin{equation}
+S_N=\frac{T_{\mathrm{wall}}(1)}{T_{\mathrm{wall}}(N)},
+\end{equation}
+and should not be labeled sample reduction.
+
+\paragraph{External automation and fast learners.}
+A teacher/helper robot can automate adaptation or collection \cite{hu2025robottrainsrobot,mendonca2025continuous}; fast local systems reduce update and deployment latency \cite{stachowicz2023fastrlap,luo2024serl,wurss2023locality}. These choices transfer cost to additional hardware, calibration, control infrastructure, and maintenance.
+
+\subsection{Removing reset and recovery downtime}
+
+Forward/backward or multi-task cycles reuse terminal states as starts \cite{luo2024serl,gupta2021resetfreemtl,sharma2023medalpp}. Pseudo-reset goal cycles can sustain mobile manipulation or continuing operation \cite{sun2022relmm,mendonca2025continuous}. Learned recovery uses demonstrations or prior failures \cite{liu2026autoserl,hu2023reboot,kumar2023ptr}. Other systems use reels, launchers, reorientation, gravity, or actuated bins \cite{stachowicz2023fastrlap,wurss2023locality,lancaster2024modemv2,tebbe2021tabletennis,kalashnikov2022mtopt}.
+
+These mechanisms remove a particular reset operation, not all intervention. Required measurements are recovery coverage, conditional success, end-to-end system recovery, duration, fallback, human active time, and time to first unrecoverable failure. Long operation without downtime logs does not establish duty cycle.
+
+\subsection{Shifting learning upstream}
+
+Offline-to-online systems use historical data to initialize a target policy and then restrict new physical exploration \cite{walke2023ariel,hu2023reboot,nair2020awac,singh2021cog,kumar2023ptr}. Large-scale offline policy learning can avoid deployment-time exploration \cite{chebotar2023qtransformer,zhou2023realorl}. Simulation repertoires, pretrained controllers, and teacher systems further constrain target search \cite{cully2015adaptanimals,johannink2019residual,hu2025robottrainsrobot}.
+
+World-Gymnast and PlayWorld move policy improvement into learned visual worlds \cite{sharma2026worldgymnast,yin2026playworld}. The correct bounded claim is not that physical cost disappears, but that downstream physical exploration can fall while model data, GPU training, and model-bias control grow.
+
+\subsection{Improving exploration information}
+
+Demonstrations bootstrap informative states across online, offline-to-online, and world-model systems \cite{luo2024serl,luo2025hilserl,liu2026autoserl,walke2023ariel,zhan2022ferm,nair2020awac,kumar2023ptr,lancaster2024modemv2,sharma2023medalpp}. Live intervention provides corrective actions near failure \cite{luo2025hilserl,zhao2025silri}. Play and failure collections diversify data \cite{kalashnikov2022mtopt,chebotar2023qtransformer,yin2026playworld}. Learned success/reward classifiers automate supervision in several systems \cite{luo2024serl,luo2025hilserl,kalashnikov2022mtopt,kumar2023ptr,sharma2026worldgymnast,yin2026playworld}.
+
+Demonstration count does not equal person-time. A human interval may simultaneously provide safety, correction, reset, and a label; elapsed labor should be counted once and tagged by all informational roles. Intervention methods require matched operator-time comparisons as well as matched robot-step comparisons.
+
+\subsection{Adapting instead of relearning}
+
+Meta-learned dynamics, behavior repertoires, and teacher-mediated policies adapt a prior to new terrain, damage, or dynamics \cite{nagabandi2019metarl,cully2015adaptanimals,hu2025robottrainsrobot}. Their deployment phase can be short, but comparison with from-scratch learning requires
+\begin{equation}
+C_{\mathrm{total}}(K)=C_{\mathrm{pretrain}}+K C_{\mathrm{adapt}}
+\quad\text{versus}\quad
+K C_{\mathrm{scratch}}.
+\end{equation}
+Prior support must also be tested: adaptation to hand-covered perturbations does not establish open-ended robustness.
+
+\section{Quantitative Reporting Audit}
+
+\subsection{Traceable examples}
+
+Table~\ref{tab:examples} retains denominator, platform, locator, reporting status, and interpretation limit for every displayed empirical quantity. These rows are examples of auditable reporting, not a ranking.
+
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{longtable}{@{}L{0.11\textwidth}L{0.13\textwidth}L{0.14\textwidth}L{0.11\textwidth}L{0.13\textwidth}L{0.10\textwidth}L{0.18\textwidth}@{}}
+\caption{Selected traceable quantities. Source approximate preserves qualifiers; derived denotes reviewer arithmetic.}
+\label{tab:examples}\\
+\toprule
+Work/metric & Value & Denominator & Platform & Locator & Status & Limit \\
+\midrule
+\endfirsthead
+\toprule
+Work/metric & Value & Denominator & Platform & Locator & Status & Limit \\
+\midrule
+\endhead
+SERL phase/target time & 20 min PCB; 31 min cable; 105 min paired relocation & Atomic task/policy phases with source-declared endpoints & Franka arm & p.~8 Table~2; pp.~4,8 \cite{luo2024serl} & Source reported & Relocation covers two policies; lifecycle setup is not reported. \\
+\addlinespace
+Walk in the Park & 20{,}000 steps; about 17 min interaction and 20 min elapsed & One source-defined learning run; four hardware repetitions reported & Unitree Go1 & p.~1; p.~2 Table~I; pp.~5--6 \cite{wurss2023locality} & Source\linebreak approx. & Matched algorithm ablations are mainly simulated. \\
+\addlinespace
+MoDem-V2 time & 8, 8, 70, 140 min across four tasks & One main run per source-defined task & Franka & pp.~5--6,9--10 \cite{lancaster2024modemv2} & Source reported & Demonstration collection and setup time are \NR. \\
+\addlinespace
+QT-Opt fleet & 7 robots; 580{,}000 attempts; about 800 aggregate robot-hours & Full reported grasp corpus & Seven KUKA arms & pp.~1--2,14,21 \cite{kalashnikov2018qtopt} & Source approx. & Program wall-clock, staffing, downtime, and maintenance are \NR. \\
+\addlinespace
+Real-ORL data/labor & Over 800 robot-hours; over 270 human-hours & Full reported data/\linebreak evaluation lifecycle; over 6{,}500 trajectories & Robot manip. platform & pp.~1--2,5,10,16 \cite{zhou2023realorl} & Source approx. & Training/evaluation are combined; calendar duration and staffing are \NR. \\
+\addlinespace
+REBOOT reset & 0.608, 0.667, 0.367 success fractions & Reset-policy evaluations for three objects/tasks & Dexterous hand/\linebreak camera & Appendix E/F p.~20 \cite{hu2023reboot} & Source reported & Rescue and downtime are not quantified; no transfer claim. \\
+\addlinespace
+World-Gymnast & 4 H200 GPUs for RL; 1--2 days; optional about 100 real trajectories/task & Reported training job and optional Dyna task & AutoEval setup & pp.~4--7,15--16; App.~A.4 Table~5 \cite{sharma2026worldgymnast} & Source\linebreak approx. & Main RL occurs in the model; inherited data cost is incomplete. \\
+\addlinespace
+PlayWorld & 30 robot-hours play; 8 H200 GPUs for about 2 days & Reported play collection and model training & DROID setup & pp.~2,4--7,10,23 \cite{yin2026playworld} & Source reported & End-to-end task lifecycle and reset metrics are \NR. \\
+\addlinespace
+Damage adaptation & Under 2 min; at most about 20--30 physical tests; millions of simulated behaviors upstream & Source-defined adaptation and repertoire & Six-legged robot and arm & p.~1; Methods pp.~18,20 \cite{cully2015adaptanimals} & Source approx. & Not from scratch; upstream compute and energy are \NR. \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\subsection{Structured missingness}
+
+Of the 424 rows, 162 have reporting status \texttt{not\_reported}; their value, unit, and denominator remain \NR. Nineteen numeric zeros correspond to explicitly source-reported zero target-task demonstrations, not imputation; each has an explicit scope/basis row. Table~\ref{tab:missing} reports corpus-level missingness. The time audit first preserves 88 atomic task/phase statements, then admits only 14/34 works to strict \texttt{time\_to\_declared\_target}; 20/34 remain \NR.
+
+\begin{table}[ht]
+\centering
+\caption{Missing standardized fields among 34 core works. Availability does not imply comparability.}
+\label{tab:missing}
+\begin{tabular}{lrrl}
+\toprule
+Field & \NR & Available & Principal remaining ambiguity \\
+\midrule
+Reported phase duration & 7 & 27 & Run/data/model/program/task phase \\
+Strict time to declared target & 20 & 14 & Target, evaluator/checkpoint, boundary \\
+Physical steps & 22 & 12 & Frequency, action repeat, semantics \\
+Episodes/rollouts & 19 & 15 & Horizon and reset boundary \\
+Robot-hours & 16 & 18 & Active vs.\ aggregate scope \\
+Wall-clock & 8 & 26 & Setup, compute, downtime inclusion \\
+Compute & 21 & 13 & Duration, device count, overlap, energy \\
+Evaluation denominator & 15 & 19 & Uncertainty and independence unit \\
+Control frequency & 30 & 4 & Conversion to exposure/time invalid \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The separate lifecycle audit expands all 34 core works over eight channels (active human, standby monitoring, reset/recovery, engineering setup, safety exposure, wear/maintenance downtime, failed development runs, and prior data). Of 272 cells, 230 are \texttt{not\_reported}, 35 contain a source-located quantitative component, and seven contain only a qualitative or denominator-incomplete proxy. No work reports a complete scalar lifecycle total; this is a bounded disclosure-gap result rather than a safety judgment.
+
+\subsection{Why pooling is invalid}
+
+Six gates are usually unmatched: task/platform; success threshold and denominator; budget unit; accounting boundary; parallelism and inherited assets; and independent repetitions. Therefore this snapshot supports local matched comparisons, not a universal algorithm rank or pooled effect size. An episode of table tennis, an episode of assembly, and a continuous locomotion interval are not a shared unit.
+
+\section{Evaluation Protocol}
+
+\subsection{Freeze boundaries and targets}
+
+Before training, declare \texttt{study\_start}, \texttt{online\_start}, \texttt{threshold\_time}, \texttt{study\_end}, inclusion of development/failed runs, prior-asset cutoff, and amortization rule. Freeze the task, initial-state generator, success event, threshold $\tau$, trial count, interval, evaluation cadence, and right-censoring rule.
+
+\subsection{Log four streams}
+
+\begin{enumerate}
+    \item \textbf{Interaction:} task, reset, recovery, evaluation, and development transitions with timestamps.
+    \item \textbf{Operational events:} failure detection, safety abort, reset/recovery attempt, maintenance, replenishment, and resume.
+    \item \textbf{Human intervals:} active/standby status and role tags for demonstration, label, intervention, reset, rescue, monitoring, maintenance, evaluation, and engineering.
+    \item \textbf{Compute:} phase, device, count, start/end, collection overlap, and energy when measurable.
+\end{enumerate}
+
+For reset/recovery report
+\begin{align}
+P_{\mathrm{reset}} &= \frac{N_{\mathrm{reset\ success}}}{N_{\mathrm{reset\ attempts}}},\\
+\mathrm{coverage} &= \frac{N_{\mathrm{observed\ failures\ eligible}}}{N_{\mathrm{observed\ failures}}},\\
+P_{\mathrm{recover}\mid\mathrm{eligible}} &=
+\frac{N_{\mathrm{successful\ eligible\ recoveries}}}{N_{\mathrm{eligible\ attempts}}},\\
+P_{\mathrm{system\ recover}} &=
+\frac{N_{\mathrm{all\ failures\ autonomously\ returned}}}{N_{\mathrm{all\ observed\ failures}}}.
+\end{align}
+Coverage and conditional success must appear together.
+
+\subsection{Learning curves and comparison gates}
+
+Publish performance against physical transitions, aggregate robot-hours, elapsed wall-clock, and operator-hours. Retain all seeds and failed runs. Where feasible, use at least three independent seeds and report each seed plus a median and interval.
+
+\begin{table}[ht]
+\centering
+\caption{Comparison gates. Failure restricts the claim rather than authorizing an implicit conversion.}
+\label{tab:gates}
+\begin{tabularx}{\textwidth}{p{0.08\textwidth}p{0.38\textwidth}Y}
+\toprule
+Gate & Must match or be explicitly corrected & Allowed statement when unmet \\
+\midrule
+G1 & Robot, sensors, actions, horizon, initial states & Separate feasibility only \\
+G2 & Success definition, threshold, trials, uncertainty & No time-to-threshold comparison \\
+G3 & Steps, episodes, robot-hours, or preregistered conversion & Report each quantity without reduction claim \\
+G4 & Reset, setup, demo, compute, evaluation, maintenance boundary & Compare jointly covered sub-ledger only \\
+G5 & Actor/GPU count, prior data, pretrained model/controller & Separate marginal and lifecycle views \\
+G6 & Independent seeds, sites, hardware, failed runs & Demonstration-level, not stable effect size \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Open Problems}
+
+Table~\ref{tab:gaps} pairs the highest-priority missing evidence with a falsifiable design.
+
+\begin{table*}[t]
+\centering
+\small
+\caption{Priority gaps and decisive tests.}
+\label{tab:gaps}
+\begin{tabularx}{\textwidth}{p{0.19\textwidth}p{0.32\textwidth}Y}
+\toprule
+Gap & Design & Falsifying observation \\
+\midrule
+Lifecycle ledger & Compare replay, offline-to-online, and world-model methods with all data, human, compute, reset, maintenance, evaluation, and failed runs counted. & Pairwise ordering by target online robot-hours reverses under the preregistered lifecycle boundary. \\
+\addlinespace
+Operator occupancy & Match conditions by physical transitions, active operator-minutes, and presence-bound minutes. & A robot-sample advantage disappears under matched operator time. \\
+\addlinespace
+Success denominator & Freeze evaluator, threshold, trial count, interval, and cadence across methods/sites. & Ordering changes across preregistered thresholds or valid denominators. \\
+\addlinespace
+Independent E4 replication & Three teams, two hardware instances, frozen task/software/reset/target; report site variance and engineering. & Original cost interval fails to cover a substantial share of site-level outcomes. \\
+\addlinespace
+Safety/wear/failed runs & Count every started seed, abort, collision, repair, and downtime interval. & Method minimizing successful-run samples does not minimize robot-hours per safe successful policy. \\
+\addlinespace
+Fleet scaling & Run 1, 2, 4, and 8 robots for a fixed corpus and learner. & Calendar speedup saturates or aggregate resource efficiency falls with fleet size. \\
+\addlinespace
+World-model accounting & Compare equal physical, equal compute, and equal lifecycle budgets. & Advantage exists only when one resource is omitted. \\
+\addlinespace
+Adaptation amortization & Report pretraining, adaptation, reuse $K$, asset lifetime, and in-/out-of-support perturbations. & Break-even exceeds plausible reuse or gains vanish outside prior support. \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+A compact but high-value benchmark would use one fixed manipulation task and one mobile/locomotion task; compare replay, offline-to-online, world-model, demonstration/intervention, and reset/recovery routes; run at least three seeds and two sites; and publish timestamped interaction, reset, human, safety, maintenance, and compute streams. The output should be a Pareto frontier, not one score.
+
+\section{Limitations}
+
+The review relies on public discovery routes and may miss records indexed only in inaccessible databases or described with unusual terminology. The corpus is weighted toward structured manipulation and post-2018 systems, limiting external validity to outdoor, soft-robot, multi-robot, and human-shared environments. Model-assisted screening with root verification is not independent dual review. Published successful systems create publication and survivorship bias; failed development runs are rarely available.
+
+Five core works were preprints at the cutoff, and metadata or evidence can change. Reported quantities frequently cover only an online subphase. Missing cost channels can be identified but not estimated. Source-reported values remain heterogeneous in task, threshold, control, reset, parallelism, and prior assets. We deliberately avoid pooled effects. Finally, official code and project links are time-sensitive and do not constitute independent physical reproduction.
+
+\section{Conclusion}
+
+Real-world robot RL has produced genuine task-specific reductions in physical interaction and elapsed time. Replay, model learning, offline data, fleets, reset/recovery systems, demonstrations, world models, engineered controllers, and adaptation each alter a different part of the resource ledger. The scientific error is not using any one mechanism; it is treating the resource that disappeared from the headline as if it disappeared from the system.
+
+The appropriate next step is auditable multi-resource reporting: frozen success targets; marginal and lifecycle ledgers; timestamped physical, human, reset, safety, maintenance, and compute events; and matched comparison gates. Under that standard, efficiency becomes a falsifiable system property rather than a marketing number.
+
+\appendix
+
+\section{Public Data Schema}
+
+\begin{table}[ht]
+\centering
+\caption{Repository evidence layers.}
+\label{tab:schema}
+\begin{tabularx}{\textwidth}{p{0.25\textwidth}p{0.14\textwidth}Y}
+\toprule
+Table & Rows & Role \\
+\midrule
+\texttt{papers.csv} & 36 & Canonical identity, links, evidence tiers, headline fields, displaced cost, limitations \\
+\texttt{mechanism\_matrix.csv} & 25 & Three-level mechanisms, many-to-many work mapping, trade-offs, failure modes \\
+\path{quantitative_evidence.csv} & 424 & 408 standard plus 16 supplemental rows; value, denominator, locator, status, limit \\
+\texttt{time\_ontology.csv} & 88 & Atomic phase/task clocks, target, evaluator, start/end boundary, partial scope \\
+\texttt{hardware\_roles.csv} & 36 & Learner, helper/reset, fleet-collector, and evaluation-only hardware \\
+\texttt{lifecycle\_cost\_}\linebreak\texttt{grid.csv} & 272 & Eight cost channels for every core work \\
+\texttt{tier\_rationales.csv} & 36 & Frozen E0--E4 decision rule and per-work rationale \\
+\texttt{zero\_demo\_basis.csv} & 19 & Scope, source basis, and upstream-data warning for every numeric zero \\
+\texttt{claims\_ledger.csv} & 25 & Bounded claim wording, scope, supports, confidence, mandatory caveat \\
+\texttt{claim\_evidence.csv} & 509 & Typed claim-to-row-to-original-locator mappings and executable counts \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The join key is \texttt{work\_id}; it is also the BibTeX key. Multi-valued fields use semicolons. \NR means not located in the verified source and is never replaced by zero. Numeric zero is permitted only when explicitly source-reported. Context works are forbidden from the physical quantitative ledger.
+
+\section{Corpus Index}
+
+Every bibliography entry is intentionally part of the reviewed corpus. Core works are grouped below by a primary browsing role; individual systems may support several mechanisms.
+
+\begin{longtable}{p{0.28\textwidth}p{0.66\textwidth}}
+\toprule
+Primary role & Included works \\
+\midrule
+\endfirsthead
+\toprule
+Primary role & Included works \\
+\midrule
+\endhead
+Fast/reused online learning &
+SERL \cite{luo2024serl}; HIL-SERL \cite{luo2025hilserl}; Learning to Walk \cite{haarnoja2019walk}; SAC-X \cite{riedmiller2018sacx}; Walk in the Park \cite{wurss2023locality}; FastRLAP \cite{stachowicz2023fastrlap}. \\
+\addlinespace
+Model, representation, and constrained search &
+Data-Efficient Legged RL \cite{yang2020dataefficientlegged}; Black-DROPS \cite{chatzilygeroudis2017blackdrops}; DayDreamer \cite{wu2023daydreamer}; MoDem-V2 \cite{lancaster2024modemv2}; FERM \cite{zhan2022ferm}; RIG \cite{nair2018rig}; residual RL \cite{johannink2019residual}; robotic table tennis \cite{tebbe2021tabletennis}. \\
+\addlinespace
+Fleet/continuous/reset &
+QT-Opt \cite{kalashnikov2018qtopt}; MT-Opt \cite{kalashnikov2022mtopt}; ReLMM \cite{sun2022relmm}; REBOOT \cite{hu2023reboot}; continuous mobile manipulation \cite{mendonca2025continuous}; reset-free multi-task RL \cite{gupta2021resetfreemtl}; MEDAL++ \cite{sharma2023medalpp}; AutoSERL \cite{liu2026autoserl}. \\
+\addlinespace
+Offline/upstream learning &
+ARIEL \cite{walke2023ariel}; AWAC \cite{nair2020awac}; COG \cite{singh2021cog}; PTR \cite{kumar2023ptr}; Q-Transformer \cite{chebotar2023qtransformer}; Real-ORL \cite{zhou2023realorl}; World-Gymnast \cite{sharma2026worldgymnast}; PlayWorld \cite{yin2026playworld}. \\
+\addlinespace
+Intervention/adaptation &
+SiLRI \cite{zhao2025silri}; meta-RL adaptation \cite{nagabandi2019metarl}; animal-like adaptation \cite{cully2015adaptanimals}; Robot Trains Robot \cite{hu2025robottrainsrobot}. \\
+\addlinespace
+Measurement context &
+Challenges of Real-World RL \cite{dulacarnold2019challenges,dulacarnold2021challenges}. \\
+\bottomrule
+\end{longtable}
+
+\section{Minimum Reporting Record}
+
+\begin{longtable}{p{0.20\textwidth}p{0.74\textwidth}}
+\toprule
+Group & Required fields \\
+\midrule
+\endfirsthead
+\toprule
+Group & Required fields \\
+\midrule
+\endhead
+Identity & Task, robot, sensors, action space, control frequency, action repeat, seed, date, site \\
+Performance & Success event, threshold, $k/n$, interval, evaluation cadence, out-of-distribution split \\
+Interaction & Task, demonstration, reset, recovery, evaluation, and development transitions/trials \\
+Time & Active robot-hours, elapsed wall-clock, reset/recovery/update/evaluation/idle/maintenance decomposition \\
+Human & Active and standby intervals by role; maintenance, evaluation, engineering, allocated prior labor \\
+Parallelism & Robot/actor/learner/GPU counts over time, duty cycle, policy lag \\
+Prior assets & Dataset/simulation/model/controller provenance, size, collection robot/human-hours, compute, reuse rule \\
+Reset/recovery & Trigger, entry state, coverage, attempts, success, duration, fallback, rescue \\
+Safety/wear & Collisions, aborts, falls, damage, consumables, repair time, downtime \\
+Integrity & Failed and excluded runs, inclusion flags, missing-value reason, public protocol/log version \\
+\bottomrule
+\end{longtable}
+
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}
